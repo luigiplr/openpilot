@@ -1,6 +1,6 @@
 import math
 from selfdrive.controls.lib.pid import PIDController
-from common.numpy_fast import interp
+from common.numpy_fast import clip, interp
 from selfdrive.controls.lib.latcontrol import LatControl, MIN_STEER_SPEED
 from selfdrive.controls.lib.vehicle_model import ACCELERATION_DUE_TO_GRAVITY
 from cereal import log
@@ -12,7 +12,7 @@ from cereal import log
 
 # This controller applies torque to achieve desired lateral
 # accelerations. To compensate for the low speed effects we
-# use a LOW_SPEED_FACTOR in the error. Additionally there is
+# use a LOW_SPEED_FACTOR in the error. Additionally, there is
 # friction in the steering wheel that needs to be overcome to
 # move it at all, this is compensated for too.
 
@@ -25,7 +25,7 @@ class LatControlTorque(LatControl):
   def __init__(self, CP, CI):
     super().__init__(CP, CI)
     self.pid = PIDController(CP.lateralTuning.torque.kp, CP.lateralTuning.torque.ki,
-                            k_f=CP.lateralTuning.torque.kf, pos_limit=1.0, neg_limit=-1.0)
+                             k_f=CP.lateralTuning.torque.kf, pos_limit=1.0, neg_limit=-1.0)
     self.get_steer_feedforward = CI.get_steer_feedforward_function()
     self.steer_max = 1.0
     self.pid.pos_limit = self.steer_max
@@ -46,12 +46,14 @@ class LatControlTorque(LatControl):
       self.pid.reset()
     else:
       if self.use_steering_angle:
-        actual_curvature = -VM.calc_curvature(math.radians(CS.steeringAngleDeg - params.angleOffsetDeg), CS.vEgo, params.roll)
+        actual_curvature = -VM.calc_curvature(math.radians(CS.steeringAngleDeg - params.angleOffsetDeg), CS.vEgo,
+                                              params.roll)
       else:
         actual_curvature = llk.angularVelocityCalibrated.value[2] / CS.vEgo
-      desired_lateral_accel = desired_curvature * CS.vEgo**2
-      desired_lateral_jerk = desired_curvature_rate * CS.vEgo**2
-      actual_lateral_accel = actual_curvature * CS.vEgo**2
+
+      desired_lateral_accel = desired_curvature * CS.vEgo ** 2
+      desired_lateral_jerk = desired_curvature_rate * CS.vEgo ** 2
+      actual_lateral_accel = actual_curvature * CS.vEgo ** 2
 
       setpoint = desired_lateral_accel + LOW_SPEED_FACTOR * desired_curvature
       measurement = actual_lateral_accel + LOW_SPEED_FACTOR * actual_curvature
@@ -75,5 +77,5 @@ class LatControlTorque(LatControl):
       pid_log.output = -output_torque
       pid_log.saturated = self._check_saturation(self.steer_max - abs(output_torque) < 1e-3, CS)
 
-    #TODO left is positive in this convention
-    return -output_torque, 0.0, pid_log
+    # TODO left is positive in this convention
+    return -clip(output_torque, -self.steer_max, self.steer_max), 0.0, pid_log
