@@ -25,11 +25,8 @@ class LatControlTorque(LatControl):
   def __init__(self, CP, CI):
     super().__init__(CP, CI)
     self.pid = PIDController(CP.lateralTuning.torque.kp, CP.lateralTuning.torque.ki,
-                             k_f=CP.lateralTuning.torque.kf, pos_limit=1.0, neg_limit=-1.0)
+                             k_f=CP.lateralTuning.torque.kf, neg_limit=-self.steer_max, pos_limit=self.steer_max)
     self.get_steer_feedforward = CI.get_steer_feedforward_function()
-    self.steer_max = 1.0
-    self.pid.pos_limit = self.steer_max
-    self.pid.neg_limit = -self.steer_max
     self.use_steering_angle = CP.lateralTuning.torque.useSteeringAngle
     self.friction = CP.lateralTuning.torque.friction
 
@@ -46,8 +43,7 @@ class LatControlTorque(LatControl):
       self.pid.reset()
     else:
       if self.use_steering_angle:
-        actual_curvature = -VM.calc_curvature(math.radians(CS.steeringAngleDeg - params.angleOffsetDeg), CS.vEgo,
-                                              params.roll)
+        -VM.calc_curvature(math.radians(CS.steeringAngleDeg - params.angleOffsetDeg), CS.vEgo, params.roll)
       else:
         actual_curvature = llk.angularVelocityCalibrated.value[2] / CS.vEgo
 
@@ -60,13 +56,17 @@ class LatControlTorque(LatControl):
       error = setpoint - measurement
       pid_log.error = error
 
+      friction_compensation = interp(desired_lateral_jerk, [-JERK_THRESHOLD, JERK_THRESHOLD], [-self.friction, self.friction])
+      # avoid deadzone near saturation
+      self.pid.pos_limit = self.steer_max - friction_compensation
+      self.pid.neg_limit = -self.steer_max - friction_compensation
+
       ff = desired_lateral_accel - params.roll * ACCELERATION_DUE_TO_GRAVITY
       output_torque = self.pid.update(error,
                                       override=CS.steeringPressed, feedforward=ff,
                                       speed=CS.vEgo,
                                       freeze_integrator=CS.steeringRateLimited)
 
-      friction_compensation = interp(desired_lateral_jerk, [-JERK_THRESHOLD, JERK_THRESHOLD], [-self.friction, self.friction])
       output_torque += friction_compensation
 
       pid_log.active = True
