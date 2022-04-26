@@ -33,9 +33,9 @@ class CarInterface(CarInterfaceBase):
     ret.centerToFront = ret.wheelbase * 0.44
 
     if candidate in (CAR.RAM_1500):
-      ret.wheelbase = 3.88  # 2021 Ram 1500
-      ret.steerRatio = 16.2  # just a guess
-      ret.mass = 2493. + STD_CARGO_KG  # kg curb weight 2021 Ram 1500
+      ret.wheelbase = 3.67  # 2021 Ram 1500 Short box crew cab
+      ret.steerRatio = 16.1  # just a guess
+      ret.mass = 3266. + STD_CARGO_KG  # kg curb weight 2021 Ram 1500 shortbox crew limited
       MAX_TORQUE = 3.6
       ret.lateralTuning.init('torque')
       ret.lateralTuning.torque.useSteeringAngle = True
