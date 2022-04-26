@@ -36,13 +36,13 @@ class CarInterface(CarInterfaceBase):
       ret.wheelbase = 3.88  # 2021 Ram 1500
       ret.steerRatio = 16.2  # just a guess
       ret.mass = 2493. + STD_CARGO_KG  # kg curb weight 2021 Ram 1500
-      MAX_TORQUE = 2.0
+      MAX_TORQUE = 3.6
       ret.lateralTuning.init('torque')
       ret.lateralTuning.torque.useSteeringAngle = True
       ret.lateralTuning.torque.kp = 2.0 / MAX_TORQUE
       ret.lateralTuning.torque.kf = 1.0 / MAX_TORQUE
       ret.lateralTuning.torque.ki = 0.5 / MAX_TORQUE
-      ret.lateralTuning.torque.friction = 0.1
+      ret.lateralTuning.torque.friction = 0.001
       ret.steerActuatorDelay = 0.16
       ret.steerRateCost = 1.0
       ret.centerToFront = ret.wheelbase * 0.4 # just a guess
